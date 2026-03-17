@@ -2,9 +2,13 @@ import { PublicKey } from '@solana/web3.js';
 
 export type DriftEnv = 'devnet' | 'mainnet-beta';
 
+// Drift Vaults program ID (same for devnet and mainnet)
+const DRIFT_VAULTS_PROGRAM_ID = new PublicKey('vAuLTsyrvSfZRuRB3XgvkPwNGgYSs9YRYymVebLKoxR');
+
 export interface Config {
   rpcUrl: string;
   vaultAddress: PublicKey | null;
+  vaultsProgramId: PublicKey;
   driftEnv: DriftEnv;
 }
 
@@ -40,6 +44,7 @@ export function getConfig(): Config {
   return {
     rpcUrl: getEnvVar('NEXT_PUBLIC_RPC_URL', 'https://api.devnet.solana.com'),
     vaultAddress: parsePublicKey(process.env.NEXT_PUBLIC_VAULT_ADDRESS),
+    vaultsProgramId: DRIFT_VAULTS_PROGRAM_ID,
     driftEnv: parseDriftEnv(getEnvVar('NEXT_PUBLIC_DRIFT_ENV', 'devnet')),
   };
 }

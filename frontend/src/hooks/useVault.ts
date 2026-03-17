@@ -10,7 +10,8 @@ import {
   BulkAccountLoader,
   QUOTE_PRECISION,
 } from '@drift-labs/sdk';
-import { VaultClient, getVaultAddressSync } from '@drift-labs/vaults-sdk';
+import { VaultClient, getVaultDepositorAddressSync, type DriftVaults } from '@drift-labs/vaults-sdk';
+import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
 import { config } from '@/config';
 
 export interface VaultData {
@@ -95,9 +96,15 @@ export function useVault(): UseVaultReturn {
         await drift.subscribe();
         setDriftClient(drift);
 
+        // Fetch the vaults program IDL from on-chain and create typed program
+        const vaultsProgram = await Program.at<DriftVaults>(
+          config.vaultsProgramId,
+          drift.provider as AnchorProvider
+        );
+
         const vault = new VaultClient({
           driftClient: drift,
-          programId: getVaultAddressSync('protocol'),
+          program: vaultsProgram,
         });
 
         setVaultClient(vault);
@@ -158,10 +165,13 @@ export function useVault(): UseVaultReturn {
       // Fetch user data if wallet connected
       if (wallet.publicKey) {
         try {
-          const vaultDepositor = await vaultClient.getVaultDepositor(
+          // Derive the vault depositor address from vault and user authority
+          const vaultDepositorAddress = getVaultDepositorAddressSync(
+            vaultClient.program.programId,
             config.vaultAddress,
             wallet.publicKey
           );
+          const vaultDepositor = await vaultClient.getVaultDepositor(vaultDepositorAddress);
 
           if (vaultDepositor) {
             const userShares = vaultDepositor.vaultShares;
@@ -169,7 +179,7 @@ export function useVault(): UseVaultReturn {
             
             const pendingWithdrawal = vaultDepositor.lastWithdrawRequest?.shares ?? new BN(0);
             const withdrawalTs = vaultDepositor.lastWithdrawRequest?.ts;
-            const redemptionPeriod = vaultAccount.redemptionPeriod?.toNumber() ?? 0;
+            const redemptionPeriod = vaultAccount.redeemPeriod?.toNumber() ?? 0;
             
             const withdrawalEligibleAt = withdrawalTs
               ? new Date((withdrawalTs.toNumber() + redemptionPeriod) * 1000)

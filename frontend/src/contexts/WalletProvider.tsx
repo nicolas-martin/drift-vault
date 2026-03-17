@@ -6,11 +6,7 @@ import {
   WalletProvider as SolanaWalletProvider,
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { config } from '@/config';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -20,20 +16,9 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider: FC<WalletProviderProps> = ({ children }) => {
-  const network =
-    config.driftEnv === 'mainnet-beta'
-      ? WalletAdapterNetwork.Mainnet
-      : WalletAdapterNetwork.Devnet;
-
-  // Phantom and Solflare are explicitly supported.
-  // Other wallets (Backpack, etc.) are auto-detected via Wallet Standard.
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
-    ],
-    [network]
-  );
+  // Phantom is the most popular Solana wallet
+  // Other wallets can be auto-detected via Wallet Standard
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
     <ConnectionProvider endpoint={config.rpcUrl}>
