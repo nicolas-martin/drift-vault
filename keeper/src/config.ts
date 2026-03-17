@@ -123,13 +123,14 @@ export const MAX_SLIPPAGE_BPS = 50;
 // =============================================================================
 
 export function validateConfig(): void {
-  // Validate VAULT_ADDRESS if provided
-  if (VAULT_ADDRESS) {
-    try {
-      new PublicKey(VAULT_ADDRESS);
-    } catch {
-      throw new Error(`Invalid VAULT_ADDRESS: ${VAULT_ADDRESS}`);
-    }
+  // VAULT_ADDRESS is required
+  if (!VAULT_ADDRESS) {
+    throw new Error('VAULT_ADDRESS is not set. Run scripts/init-vault.sh to initialize a vault and set VAULT_ADDRESS in keeper/.env');
+  }
+  try {
+    new PublicKey(VAULT_ADDRESS);
+  } catch {
+    throw new Error(`Invalid VAULT_ADDRESS: "${VAULT_ADDRESS}" is not a valid Solana public key`);
   }
 
   // Validate DRIFT_ENV

@@ -1,20 +1,26 @@
 import { getVaultUsdcBalance, getSolPrice, getDriftClient } from './driftClient';
 import { VAULT_ADDRESS } from './config';
 import { logger } from './logger';
-import { VaultClient, getVaultDepositorAddressSync, type DriftVaults } from '@drift-labs/vaults-sdk';
-import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
+import { VaultClient, type DriftVaults } from '@drift-labs/vaults-sdk';
+import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
+
+const VAULTS_PROGRAM_ID = new PublicKey('vAuLTsyrvSfZRuRB3XgvkPwNGgYSs9YRYymVebLKoxR');
+// Load IDL from installed package — avoids on-chain IDL fetch which fails on devnet
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const DRIFT_VAULTS_IDL = require('@drift-labs/vaults-sdk/src/idl/drift_vaults.json');
 
 // Lazy-initialised VaultClient (reused across calls)
 let _vaultClient: VaultClient | null = null;
 
-async function getVaultClient(): Promise<VaultClient> {
+function getVaultClient(): VaultClient {
   if (_vaultClient) return _vaultClient;
 
   const driftClient = getDriftClient();
-  const vaultsProgram = await Program.at<DriftVaults>(
-    new PublicKey('vAuLTsyrvSfZRuRB3XgvkPwNGgYSs9YRYymVebLKoxR'),
+  const vaultsProgram = new Program<DriftVaults>(
+    DRIFT_VAULTS_IDL as DriftVaults,
+    VAULTS_PROGRAM_ID,
     driftClient.provider as AnchorProvider
   );
   _vaultClient = new VaultClient({ driftClient, program: vaultsProgram });
@@ -44,7 +50,7 @@ export async function checkPendingWithdrawals(): Promise<PendingWithdrawalsResul
       return { hasPending: false, totalPending: 0 };
     }
 
-    const vaultClient = await getVaultClient();
+    const vaultClient = getVaultClient();
     const vaultPubkey = new PublicKey(VAULT_ADDRESS);
 
     // Fetch all depositor accounts that have an active withdrawal request

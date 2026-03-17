@@ -10,7 +10,7 @@
  *   --all    Show funding for SOL, BTC, and ETH perps
  */
 
-import { Connection, Keypair } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import {
   DriftClient,
   Wallet,
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     driftClient = new DriftClient({
       connection,
       wallet,
-      programID: sdkConfig.DRIFT_PROGRAM_ID,
+      programID: new PublicKey(sdkConfig.DRIFT_PROGRAM_ID),
       accountSubscription: {
         type: 'polling',
         accountLoader: bulkAccountLoader,

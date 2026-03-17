@@ -1,9 +1,23 @@
 {
-  "extends": "../keeper/tsconfig.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
     "rootDir": ".",
-    "outDir": "./dist"
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "typeRoots": ["../keeper/node_modules/@types"],
+    "paths": {
+      "*": ["../keeper/node_modules/*"]
+    }
   },
   "include": ["./*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["dist"]
 }

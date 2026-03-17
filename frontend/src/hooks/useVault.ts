@@ -13,6 +13,7 @@ import {
 import { VaultClient, getVaultDepositorAddressSync, type DriftVaults } from '@drift-labs/vaults-sdk';
 import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { config } from '@/config';
+import DRIFT_VAULTS_IDL from '@/idl/drift_vaults.json';
 
 export interface VaultData {
   totalEquity: BN;
@@ -100,8 +101,9 @@ export function useVault(): UseVaultReturn {
         driftClientRef.current = drift;
         setDriftClient(drift);
 
-        // Fetch the vaults program IDL from on-chain and create typed program
-        const vaultsProgram = await Program.at<DriftVaults>(
+        // Use bundled IDL — avoids on-chain IDL fetch which can fail
+        const vaultsProgram = new Program<DriftVaults>(
+          DRIFT_VAULTS_IDL as unknown as DriftVaults,
           config.vaultsProgramId,
           drift.provider as AnchorProvider
         );
