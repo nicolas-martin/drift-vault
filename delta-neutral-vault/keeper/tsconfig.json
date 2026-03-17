@@ -18,7 +18,11 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true
+    "noImplicitOverride": true,
+    "baseUrl": ".",
+    "paths": {
+      "@solana/web3.js": ["./node_modules/@drift-labs/sdk/node_modules/@solana/web3.js"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
