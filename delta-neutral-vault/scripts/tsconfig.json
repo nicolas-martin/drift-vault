@@ -1,0 +1,9 @@
+{
+  "extends": "../keeper/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist"
+  },
+  "include": ["./*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

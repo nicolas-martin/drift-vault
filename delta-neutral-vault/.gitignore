@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Keypairs (NEVER commit these)
+*.json.bak
+keypairs/
+vault-manager.json
+vault-delegate.json
+
+# Logs
+*.log
+keeper-error.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Yarn
+.yarn/
+.pnp.*

@@ -1,0 +1,39 @@
+{
+  "name": "delta-neutral-vault-keeper",
+  "version": "1.0.0",
+  "description": "Keeper bot for Delta-Neutral Funding Rate Vault on Drift Protocol",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "nodemon --exec ts-node src/index.ts"
+  },
+  "keywords": [
+    "solana",
+    "drift",
+    "delta-neutral",
+    "funding-rate",
+    "vault",
+    "keeper"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@drift-labs/sdk": "2.151.0",
+    "@drift-labs/vaults-sdk": "^0.1.15",
+    "@solana/web3.js": "^1.91.0",
+    "bn.js": "^5.2.1",
+    "dotenv": "^16.4.5",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/node": "^20.12.0",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

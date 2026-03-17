@@ -1,0 +1,99 @@
+:root {
+  /* Colors - Dark Theme */
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #1a1a1a;
+  --card-bg: #141414;
+  --input-bg: #1a1a1a;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  
+  --border-color: #2a2a2a;
+  
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: #2563eb;
+  --accent-blue-alpha: rgba(59, 130, 246, 0.1);
+  
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+  
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --error-border: rgba(239, 68, 68, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Wallet Adapter UI Overrides */
+.wallet-adapter-button {
+  background-color: var(--accent-blue) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  height: 44px !important;
+}
+
+.wallet-adapter-button:hover:not([disabled]) {
+  background-color: var(--accent-blue-hover) !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: var(--card-bg) !important;
+}
+
+.wallet-adapter-modal-title {
+  color: var(--text-primary) !important;
+}
+
+.wallet-adapter-modal-list li {
+  background-color: var(--bg-secondary) !important;
+}
+
+.wallet-adapter-modal-list li:hover {
+  background-color: var(--border-color) !important;
+}
+
+.wallet-adapter-modal-list-more {
+  color: var(--accent-blue) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
