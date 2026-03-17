@@ -6,7 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
   DriftClient,
-  Wallet,
+  IWallet,
   BulkAccountLoader,
   QUOTE_PRECISION,
 } from '@drift-labs/sdk';
@@ -74,7 +74,7 @@ export function useVault(): UseVaultReturn {
       setError(null);
 
       try {
-        const walletAdapter: Wallet = {
+        const walletAdapter: IWallet = {
           publicKey: wallet.publicKey,
           signTransaction: wallet.signTransaction,
           signAllTransactions: wallet.signAllTransactions,

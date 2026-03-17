@@ -9,7 +9,6 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
-  BackpackWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { config } from '@/config';
@@ -26,11 +25,12 @@ export const WalletProvider: FC<WalletProviderProps> = ({ children }) => {
       ? WalletAdapterNetwork.Mainnet
       : WalletAdapterNetwork.Devnet;
 
+  // Phantom and Solflare are explicitly supported.
+  // Other wallets (Backpack, etc.) are auto-detected via Wallet Standard.
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter({ network }),
-      new BackpackWalletAdapter(),
     ],
     [network]
   );
