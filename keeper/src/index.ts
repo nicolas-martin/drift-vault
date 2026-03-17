@@ -18,10 +18,11 @@ import {
   FundingSnapshot,
 } from './fundingMonitor';
 import { getHealthStatus, checkHealthAndAlert, HealthStatus } from './health';
-import { checkPendingWithdrawals } from './withdrawHandler';
+import { checkPendingWithdrawals, ensureWithdrawalLiquidity } from './withdrawHandler';
 import { getPositionState, logPositionState, hasOpenPositions, PositionState } from './rebalancer';
-import { DRIFT_ENV, VAULT_ADDRESS, StrategyParams } from './config';
+import { DRIFT_ENV, VAULT_ADDRESS, StrategyParams, validateConfig } from './config';
 import { logger, setupGlobalErrorHandlers } from './logger';
+import { getDriftClient } from './driftClient';
 
 // =============================================================================
 // Constants
@@ -88,8 +89,31 @@ async function main(): Promise<void> {
   // Setup global error handlers
   setupGlobalErrorHandlers();
 
+  // Validate config early — fail fast with a clear message
+  try {
+    validateConfig();
+  } catch (err) {
+    logger.error('Configuration error', { error: err instanceof Error ? err.message : String(err) });
+    process.exit(1);
+  }
+
   // Log startup banner
   logStartupBanner();
+
+  // Graceful shutdown handler
+  const shutdown = async (signal: string) => {
+    logger.info(`Received ${signal} — shutting down gracefully...`);
+    try {
+      const client = getDriftClient();
+      if (client) await client.unsubscribe();
+    } catch {
+      // Ignore unsubscribe errors during shutdown
+    }
+    logger.info('Shutdown complete');
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 
   // Initialize Drift client
   logger.info('Initializing Drift client...');
@@ -140,9 +164,11 @@ async function main(): Promise<void> {
       }
 
       // =========================================================================
-      // Settle Funding (always)
+      // Settle Funding (only when positions are open)
       // =========================================================================
-      await settleFunding();
+      if (hasOpenPositions(positionState)) {
+        await settleFunding();
+      }
 
       // =========================================================================
       // Check Pending Withdrawals
@@ -160,6 +186,10 @@ async function main(): Promise<void> {
           await closeAllPositions();
           logger.info('Positions closed');
         } else {
+          // Ensure liquidity for any pending withdrawals before rebalancing
+          if (hasPendingWithdrawals && withdrawalStatus.totalPending > 0) {
+            await ensureWithdrawalLiquidity(withdrawalStatus.totalPending);
+          }
           // Check if rebalancing is needed
           await rebalanceIfNeeded();
         }

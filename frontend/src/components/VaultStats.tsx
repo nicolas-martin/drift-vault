@@ -11,9 +11,11 @@ interface VaultStatsProps {
   isLoading: boolean;
 }
 
+// Safe formatter — handles large BN values by dividing before converting to avoid overflow
 function formatUsdc(amount: BN | null): string {
   if (!amount) return '0.00';
-  const value = amount.toNumber() / 1e6;
+  // Divide by 1e3 first (BN safe), then divide remaining 1e3 as float
+  const value = amount.divn(1_000).toNumber() / 1_000;
   return value.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -22,7 +24,7 @@ function formatUsdc(amount: BN | null): string {
 
 function formatShares(amount: BN | null): string {
   if (!amount) return '0';
-  const value = amount.toNumber() / 1e6;
+  const value = amount.divn(1_000).toNumber() / 1_000;
   return value.toLocaleString('en-US', {
     minimumFractionDigits: 4,
     maximumFractionDigits: 4,
@@ -68,7 +70,7 @@ export const VaultStats: FC<VaultStatsProps> = ({ vaultData, userData, isLoading
         <div className={styles.stat}>
           <span className={styles.label}>Estimated APY</span>
           <span className={styles.valueHighlight}>
-            {vaultData.estimatedApy.toFixed(2)}%
+            {vaultData.estimatedApy > 0 ? `${vaultData.estimatedApy.toFixed(2)}%` : '--'}
           </span>
         </div>
         

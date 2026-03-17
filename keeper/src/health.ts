@@ -48,7 +48,8 @@ export function getHealthStatus(): HealthStatus {
     );
 
     const isHealthy = health > StrategyParams.HEALTH_MIN_THRESHOLD;
-    const isCritical = health < 20;
+    // Critical = below the configured minimum threshold (triggers emergency close)
+    const isCritical = health < StrategyParams.HEALTH_MIN_THRESHOLD;
 
     const status: HealthStatus = {
       health,

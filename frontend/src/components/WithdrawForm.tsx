@@ -1,8 +1,9 @@
 'use client';
 
-import { FC, useState, useCallback } from 'react';
+import { FC, useState, useCallback, useEffect } from 'react';
 import BN from 'bn.js';
 import { UserVaultData, VaultData } from '@/hooks/useVault';
+import { config } from '@/config';
 import styles from './Form.module.css';
 
 interface WithdrawFormProps {
@@ -42,12 +43,21 @@ export const WithdrawForm: FC<WithdrawFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const hasPendingWithdrawal = userData?.pendingWithdrawal.gt(new BN(0)) ?? false;
+
+  // Live countdown — ticks every minute
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!hasPendingWithdrawal) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [hasPendingWithdrawal]);
+
   const withdrawalReady = hasPendingWithdrawal && userData?.withdrawalEligibleAt
-    ? new Date() >= userData.withdrawalEligibleAt
+    ? now >= userData.withdrawalEligibleAt.getTime()
     : false;
 
   const timeRemaining = userData?.withdrawalEligibleAt
-    ? Math.max(0, userData.withdrawalEligibleAt.getTime() - Date.now())
+    ? Math.max(0, userData.withdrawalEligibleAt.getTime() - now)
     : 0;
 
   const formatTimeRemaining = (ms: number): string => {
@@ -201,7 +211,7 @@ export const WithdrawForm: FC<WithdrawFormProps> = ({
         <div className={styles.success}>
           Transaction successful!{' '}
           <a
-            href={`https://explorer.solana.com/tx/${txHash}`}
+            href={`https://explorer.solana.com/tx/${txHash}${config.driftEnv === 'devnet' ? '?cluster=devnet' : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.txLink}

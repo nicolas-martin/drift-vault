@@ -64,6 +64,10 @@ export default function Home() {
               onWithdraw={withdraw}
             />
           </div>
+        ) : connected && isLoading ? (
+          <div className={styles.connectPrompt}>
+            <p>Initializing vault connection...</p>
+          </div>
         ) : (
           <div className={styles.connectPrompt}>
             <p>Connect your wallet to deposit or withdraw from the vault.</p>

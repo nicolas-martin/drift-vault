@@ -127,7 +127,10 @@ async function main(): Promise<void> {
 
     // Load delegate keypair
     let wallet: Wallet;
-    const keypairPath = path.resolve(__dirname, '../keeper', DELEGATE_KEYPAIR_PATH);
+    // Support both absolute paths and paths relative to the keeper directory
+    const keypairPath = path.isAbsolute(DELEGATE_KEYPAIR_PATH)
+      ? DELEGATE_KEYPAIR_PATH
+      : path.resolve(__dirname, '../keeper', DELEGATE_KEYPAIR_PATH);
 
     if (fs.existsSync(keypairPath)) {
       const keypairData = JSON.parse(fs.readFileSync(keypairPath, 'utf-8'));
@@ -171,6 +174,7 @@ async function main(): Promise<void> {
       oracleInfos,
       authority: vaultAuthority,
       env: DRIFT_ENV,
+      includeDelegates: true,
     });
 
     if (!json) {
@@ -199,14 +203,14 @@ async function main(): Promise<void> {
     }
 
     // Exit with error code if health is below threshold
-    if (report.health < threshold) {
-      if (!json) {
-        console.log(`\n[!] ALERT: Health (${report.health.toFixed(1)}) is below threshold (${threshold})`);
-      }
-      process.exit(1);
+    const exitCode = report.health < threshold ? 1 : 0;
+    if (exitCode === 1 && !json) {
+      console.log(`\n[!] ALERT: Health (${report.health.toFixed(1)}) is below threshold (${threshold})`);
     }
 
-    process.exit(0);
+    // Unsubscribe before exiting so the finally block always runs
+    if (driftClient) await driftClient.unsubscribe();
+    process.exit(exitCode);
   } catch (error) {
     if (json) {
       console.log(
@@ -215,12 +219,8 @@ async function main(): Promise<void> {
     } else {
       console.error('Error:', error instanceof Error ? error.message : error);
     }
+    if (driftClient) await driftClient.unsubscribe();
     process.exit(1);
-  } finally {
-    // Clean up
-    if (driftClient) {
-      await driftClient.unsubscribe();
-    }
   }
 }
 
@@ -328,7 +328,9 @@ function getPositions(driftClient: DriftClient): PositionInfo[] {
     const position = user.getSpotPosition(market.index);
     if (position) {
       const tokenAmount = user.getTokenAmount(market.index);
-      const size = convertToNumber(tokenAmount, QUOTE_PRECISION);
+      // Use the correct precision for each token's decimals
+      const tokenPrecision = new (require('@solana/web3.js').BN)(10).pow(new (require('@solana/web3.js').BN)(market.decimals));
+      const size = convertToNumber(tokenAmount, tokenPrecision);
 
       if (Math.abs(size) > 0.01) {
         // Get oracle price for non-USDC assets

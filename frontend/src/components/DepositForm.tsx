@@ -2,6 +2,7 @@
 
 import { FC, useState, useCallback } from 'react';
 import BN from 'bn.js';
+import { config } from '@/config';
 import styles from './Form.module.css';
 
 interface DepositFormProps {
@@ -110,7 +111,7 @@ export const DepositForm: FC<DepositFormProps> = ({
         <div className={styles.success}>
           Deposit successful!{' '}
           <a
-            href={`https://explorer.solana.com/tx/${txHash}`}
+            href={`https://explorer.solana.com/tx/${txHash}${config.driftEnv === 'devnet' ? '?cluster=devnet' : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.txLink}

@@ -90,8 +90,8 @@ export async function openDeltaNeutralPosition(): Promise<void> {
       amount: usdcAmountIn,
       slippageBps: MAX_SLIPPAGE_BPS,
     });
-
-    logger.info(`Spot SOL purchase complete. Tx: ${swapTx}`);
+    await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+    logger.info(`Spot SOL purchase confirmed. Tx: ${swapTx}`);
 
     // -------------------------------------------------------------------------
     // STEP 2: Open SHORT SOL-PERP position
@@ -106,8 +106,8 @@ export async function openDeltaNeutralPosition(): Promise<void> {
     });
 
     const perpTx = await driftClient.placePerpOrder(perpOrderParams);
-
-    logger.info(`Short SOL-PERP position opened. Tx: ${perpTx}`);
+    await driftClient.connection.confirmTransaction(perpTx, 'confirmed');
+    logger.info(`Short SOL-PERP position confirmed. Tx: ${perpTx}`);
 
     // Log final summary
     const newHealth = getAccountHealth();
@@ -147,10 +147,29 @@ export async function closeAllPositions(): Promise<void> {
     logger.info(`Current positions - Spot: ${spotSizeNum.toFixed(4)} SOL, Perp: ${perpSizeNum.toFixed(4)} SOL`);
 
     // -------------------------------------------------------------------------
-    // STEP 1: Close short perp position (if exists)
+    // STEP 1: Sell spot SOL first — reduces directional risk immediately
+    // -------------------------------------------------------------------------
+    if (spotSizeNum > MIN_SOL_DUST) {
+      logger.info('STEP 1: Swapping SOL back to USDC...');
+
+      const solAmountIn = new BN(Math.floor(spotSizeNum * 10 ** 9));
+      const swapTx = await driftClient.swap({
+        inMarketIndex: MarketIndexes.SOL_SPOT,
+        outMarketIndex: MarketIndexes.USDC_SPOT,
+        amount: solAmountIn,
+        slippageBps: MAX_SLIPPAGE_BPS,
+      });
+      await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+      logger.info(`SOL swapped to USDC and confirmed. Tx: ${swapTx}`);
+    } else {
+      logger.info('No significant SOL balance to swap.');
+    }
+
+    // -------------------------------------------------------------------------
+    // STEP 2: Close short perp position
     // -------------------------------------------------------------------------
     if (Math.abs(perpSizeNum) > MIN_SOL_DUST) {
-      logger.info('STEP 1: Closing short perp position...');
+      logger.info('STEP 2: Closing short perp position...');
 
       // To close a short, we go LONG with reduceOnly
       const perpAmountBn = new BN(Math.floor(Math.abs(perpSizeNum) * 10 ** 9));
@@ -163,29 +182,10 @@ export async function closeAllPositions(): Promise<void> {
       });
 
       const closePerpTx = await driftClient.placePerpOrder(closeOrderParams);
-      logger.info(`Perp position closed. Tx: ${closePerpTx}`);
+      await driftClient.connection.confirmTransaction(closePerpTx, 'confirmed');
+      logger.info(`Perp position closed and confirmed. Tx: ${closePerpTx}`);
     } else {
       logger.info('No perp position to close.');
-    }
-
-    // -------------------------------------------------------------------------
-    // STEP 2: Swap SOL back to USDC (if > MIN_SOL_DUST)
-    // -------------------------------------------------------------------------
-    if (spotSizeNum > MIN_SOL_DUST) {
-      logger.info('STEP 2: Swapping SOL back to USDC...');
-
-      const solAmountIn = new BN(Math.floor(spotSizeNum * 10 ** 9));
-
-      const swapTx = await driftClient.swap({
-        inMarketIndex: MarketIndexes.SOL_SPOT,
-        outMarketIndex: MarketIndexes.USDC_SPOT,
-        amount: solAmountIn,
-        slippageBps: MAX_SLIPPAGE_BPS,
-      });
-
-      logger.info(`SOL swapped to USDC. Tx: ${swapTx}`);
-    } else {
-      logger.info('No significant SOL balance to swap.');
     }
 
     // Log final state
@@ -268,7 +268,8 @@ export async function rebalanceIfNeeded(): Promise<void> {
       });
 
       const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-      logger.info(`Rebalance complete. Tx: ${rebalanceTx}`);
+      await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+      logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
     } else {
       // Perp is larger - reduce short perp by the surplus
       const surplus = perpSizeNum - spotSizeNum;
@@ -285,7 +286,8 @@ export async function rebalanceIfNeeded(): Promise<void> {
       });
 
       const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-      logger.info(`Rebalance complete. Tx: ${rebalanceTx}`);
+      await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+      logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
     }
 
     // Log final state

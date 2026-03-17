@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -11,7 +11,7 @@ import {
   QUOTE_PRECISION,
 } from '@drift-labs/sdk';
 import { VaultClient, getVaultDepositorAddressSync, type DriftVaults } from '@drift-labs/vaults-sdk';
-import { Program, AnchorProvider, type Idl } from '@coral-xyz/anchor';
+import { Program, AnchorProvider } from '@coral-xyz/anchor';
 import { config } from '@/config';
 
 export interface VaultData {
@@ -56,6 +56,9 @@ export function useVault(): UseVaultReturn {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref so the cleanup function always sees the latest client without stale closure
+  const driftClientRef = useRef<DriftClient | null>(null);
+
   // Initialize clients when wallet connects
   useEffect(() => {
     const initClients = async () => {
@@ -94,6 +97,7 @@ export function useVault(): UseVaultReturn {
         });
 
         await drift.subscribe();
+        driftClientRef.current = drift;
         setDriftClient(drift);
 
         // Fetch the vaults program IDL from on-chain and create typed program
@@ -120,8 +124,10 @@ export function useVault(): UseVaultReturn {
     initClients();
 
     return () => {
-      if (driftClient) {
-        driftClient.unsubscribe();
+      // Use ref to avoid stale closure — always unsubscribes the latest client
+      if (driftClientRef.current) {
+        driftClientRef.current.unsubscribe();
+        driftClientRef.current = null;
       }
     };
   }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions, connection]);
@@ -138,25 +144,35 @@ export function useVault(): UseVaultReturn {
     try {
       // Fetch vault account data
       const vaultAccount = await vaultClient.getVault(config.vaultAddress);
-      
+
       if (!vaultAccount) {
         throw new Error('Vault not found');
       }
 
-      // Calculate vault stats
-      const totalEquity = vaultAccount.netDeposits;
-      const totalShares = vaultAccount.totalShares;
-      
-      // Share price = total equity / total shares (with precision handling)
-      const sharePrice = totalShares.gt(new BN(0))
-        ? totalEquity.mul(QUOTE_PRECISION).div(totalShares).toNumber() / QUOTE_PRECISION.toNumber()
-        : 1;
+      // Use calculateVaultEquity for accurate on-chain equity (includes trading PnL + funding)
+      // Falls back to netDeposits if the vault user hasn't loaded yet
+      let totalEquityBN: BN;
+      try {
+        totalEquityBN = await vaultClient.calculateVaultEquity({ address: config.vaultAddress });
+      } catch {
+        totalEquityBN = vaultAccount.netDeposits;
+      }
 
-      // Estimated APY from funding (placeholder - would need historical data)
-      const estimatedApy = 15.5; // TODO: Calculate from actual funding rates
+      const totalShares = vaultAccount.totalShares;
+
+      // Share price in USDC (with QUOTE_PRECISION = 1e6)
+      // Computed entirely in BN to avoid float precision loss
+      const sharePriceBN = totalShares.gt(new BN(0))
+        ? totalEquityBN.mul(QUOTE_PRECISION).div(totalShares)
+        : QUOTE_PRECISION; // 1.0 default
+
+      const sharePrice = sharePriceBN.toNumber() / QUOTE_PRECISION.toNumber();
+
+      // Estimated APY — shown as "--" until we wire up historical data
+      const estimatedApy = 0; // TODO: fetch from Drift data API
 
       setVaultData({
-        totalEquity,
+        totalEquity: totalEquityBN,
         sharePrice,
         totalShares,
         estimatedApy,
@@ -175,7 +191,10 @@ export function useVault(): UseVaultReturn {
 
           if (vaultDepositor) {
             const userShares = vaultDepositor.vaultShares;
-            const userValue = userShares.mul(new BN(Math.floor(sharePrice * 1e6))).div(new BN(1e6));
+            // Value = userShares * totalEquity / totalShares  (all in BN, avoids float errors)
+            const userValue = totalShares.gt(new BN(0))
+              ? userShares.mul(totalEquityBN).div(totalShares)
+              : new BN(0);
             
             const pendingWithdrawal = vaultDepositor.lastWithdrawRequest?.shares ?? new BN(0);
             const withdrawalTs = vaultDepositor.lastWithdrawRequest?.ts;
@@ -239,6 +258,13 @@ export function useVault(): UseVaultReturn {
     if (isInitialized) {
       refresh();
     }
+  }, [isInitialized, refresh]);
+
+  // Auto-refresh every 30 seconds while initialized
+  useEffect(() => {
+    if (!isInitialized) return;
+    const interval = setInterval(() => { refresh(); }, 30_000);
+    return () => clearInterval(interval);
   }, [isInitialized, refresh]);
 
   // Deposit USDC into vault
