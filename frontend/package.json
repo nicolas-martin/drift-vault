@@ -59,7 +59,9 @@
     "@solana/codecs-data-structures": "2.0.0",
     "@solana/codecs-numbers": "2.0.0",
     "@solana/wallet-standard-features": "1.2.0",
-    "@wallet-standard/features": "1.0.3"
+    "@wallet-standard/features": "1.0.3",
+    "@solana/wallet-adapter-react": "0.15.35",
+    "@solana/wallet-adapter-base": "0.9.23"
   },
   "engines": {
     "node": "^24.0.0"
