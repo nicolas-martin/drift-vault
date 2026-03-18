@@ -25,7 +25,7 @@ import { logger } from './logger';
 
 const USDC_PRECISION = new BN(10).pow(new BN(6)); // USDC has 6 decimals
 const SOL_PRECISION = new BN(10).pow(new BN(9)); // SOL has 9 decimals
-const MIN_POSITION_USD = 10; // Minimum position size in USD
+const MIN_POSITION_USD = 0.50; // Minimum position size in USD
 const MIN_SOL_DUST = 0.001; // Minimum SOL to consider for swapping back
 
 // =============================================================================

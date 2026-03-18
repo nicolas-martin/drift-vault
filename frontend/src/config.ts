@@ -36,16 +36,16 @@ function parseDriftEnv(value: string): DriftEnv {
 	if (value === 'mainnet-beta' || value === 'devnet') {
 		return value;
 	}
-	console.warn(`Invalid DRIFT_ENV "${value}", defaulting to devnet`);
-	return 'devnet';
+	console.warn(`Invalid DRIFT_ENV "${value}", defaulting to mainnet-beta`);
+	return 'mainnet-beta';
 }
 
 export function getConfig(): Config {
 	return {
-		rpcUrl: getEnvVar('NEXT_PUBLIC_RPC_URL', 'https://api.devnet.solana.com'),
+		rpcUrl: getEnvVar('NEXT_PUBLIC_RPC_URL', 'https://api.mainnet-beta.solana.com'),
 		vaultAddress: parsePublicKey(process.env.NEXT_PUBLIC_VAULT_ADDRESS),
 		vaultsProgramId: DRIFT_VAULTS_PROGRAM_ID,
-		driftEnv: parseDriftEnv(getEnvVar('NEXT_PUBLIC_DRIFT_ENV', 'devnet')),
+		driftEnv: parseDriftEnv(getEnvVar('NEXT_PUBLIC_DRIFT_ENV', 'mainnet-beta')),
 	};
 }
 

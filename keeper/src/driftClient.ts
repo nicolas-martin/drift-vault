@@ -21,7 +21,7 @@ import {
 } from '@drift-labs/sdk';
 import * as fs from 'fs';
 
-import { RPC_URL, DELEGATE_KEYPAIR_PATH, VAULT_ADDRESS, DRIFT_ENV } from './config';
+import { RPC_URL, DELEGATE_KEYPAIR_PATH, VAULT_ADDRESS, DRIFT_ENV, JUPITER_API_KEY } from './config';
 
 // Derive WSS URL from RPC URL
 function getWssUrl(rpcUrl: string): string {
@@ -131,6 +131,7 @@ export async function initializeDriftClient(): Promise<{
 	swapClient = new UnifiedSwapClient({
 		clientType: 'jupiter',
 		connection,
+		authToken: JUPITER_API_KEY,
 	});
 
 	return { driftClient, swapClient };

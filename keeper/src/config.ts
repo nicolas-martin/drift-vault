@@ -34,13 +34,15 @@ function getEnvVarAsNumber(key: string, defaultValue: number): number {
 // Core Configuration
 // =============================================================================
 
-export const RPC_URL = getEnvVar('RPC_URL', 'https://api.devnet.solana.com');
+export const RPC_URL = getEnvVar('RPC_URL');
 
 export const DELEGATE_KEYPAIR_PATH = getEnvVar('DELEGATE_KEYPAIR_PATH', './keypairs/delegate.json');
 
 export const VAULT_ADDRESS = getEnvVar('VAULT_ADDRESS', '');
 
-export const DRIFT_ENV = getEnvVar('DRIFT_ENV', 'devnet') as 'devnet' | 'mainnet-beta';
+export const DRIFT_ENV = getEnvVar('DRIFT_ENV', 'mainnet-beta') as 'devnet' | 'mainnet-beta';
+
+export const JUPITER_API_KEY = getEnvVar('JUPITER_API_KEY', '');
 
 // =============================================================================
 // Market Indexes
@@ -138,6 +140,11 @@ export function validateConfig(): void {
 		throw new Error(`Invalid DRIFT_ENV: ${DRIFT_ENV}. Must be 'devnet' or 'mainnet-beta'`);
 	}
 
+	// JUPITER_API_KEY is required for swaps
+	if (!JUPITER_API_KEY) {
+		throw new Error('JUPITER_API_KEY is not set. Get a free key at https://portal.jup.ag');
+	}
+
 	// Validate strategy params
 	if (StrategyParams.MIN_FUNDING_RATE_THRESHOLD < 0) {
 		throw new Error('MIN_FUNDING_RATE_THRESHOLD must be non-negative');
@@ -177,6 +184,7 @@ export const config = {
 	DELEGATE_KEYPAIR_PATH,
 	VAULT_ADDRESS,
 	DRIFT_ENV,
+	JUPITER_API_KEY,
 	MarketIndexes,
 	StrategyParams,
 	DEPLOY_FRACTION,
