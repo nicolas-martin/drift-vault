@@ -18,6 +18,17 @@ import {
 } from './driftClient';
 import { config, MarketIndexes, StrategyParams, DEPLOY_FRACTION, MAX_SLIPPAGE_BPS } from './config';
 import { logger } from './logger';
+import type { Connection, TransactionSignature } from '@solana/web3.js';
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/** Confirm a transaction using the non-deprecated blockhash-based strategy */
+async function confirmTx(connection: Connection, signature: TransactionSignature): Promise<void> {
+	const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+	await connection.confirmTransaction({ signature, ...latestBlockhash }, 'confirmed');
+}
 
 // =============================================================================
 // Constants
@@ -91,7 +102,7 @@ export async function openDeltaNeutralPosition(): Promise<void> {
 			amount: usdcAmountIn,
 			slippageBps: MAX_SLIPPAGE_BPS,
 		});
-		await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+		await confirmTx(driftClient.connection, swapTx);
 		logger.info(`Spot SOL purchase confirmed. Tx: ${swapTx}`);
 
 		// -------------------------------------------------------------------------
@@ -107,7 +118,7 @@ export async function openDeltaNeutralPosition(): Promise<void> {
 		});
 
 		const perpTx = await driftClient.placePerpOrder(perpOrderParams);
-		await driftClient.connection.confirmTransaction(perpTx, 'confirmed');
+		await confirmTx(driftClient.connection, perpTx);
 		logger.info(`Short SOL-PERP position confirmed. Tx: ${perpTx}`);
 
 		// Log final summary
@@ -162,7 +173,7 @@ export async function closeAllPositions(): Promise<void> {
 				amount: solAmountIn,
 				slippageBps: MAX_SLIPPAGE_BPS,
 			});
-			await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+			await confirmTx(driftClient.connection, swapTx);
 			logger.info(`SOL swapped to USDC and confirmed. Tx: ${swapTx}`);
 		} else {
 			logger.info('No significant SOL balance to swap.');
@@ -185,7 +196,7 @@ export async function closeAllPositions(): Promise<void> {
 			});
 
 			const closePerpTx = await driftClient.placePerpOrder(closeOrderParams);
-			await driftClient.connection.confirmTransaction(closePerpTx, 'confirmed');
+			await confirmTx(driftClient.connection, closePerpTx);
 			logger.info(`Perp position closed and confirmed. Tx: ${closePerpTx}`);
 		} else {
 			logger.info('No perp position to close.');
@@ -271,7 +282,7 @@ export async function rebalanceIfNeeded(): Promise<void> {
 			});
 
 			const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-			await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+			await confirmTx(driftClient.connection, rebalanceTx);
 			logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
 		} else {
 			// Perp is larger - reduce short perp by the surplus
@@ -289,7 +300,7 @@ export async function rebalanceIfNeeded(): Promise<void> {
 			});
 
 			const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-			await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+			await confirmTx(driftClient.connection, rebalanceTx);
 			logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
 		}
 

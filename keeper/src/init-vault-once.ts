@@ -25,8 +25,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const RPC_URL = process.env['RPC_URL'] || 'https://api.devnet.solana.com';
-const DRIFT_ENV = 'devnet' as const;
+const RPC_URL: string = process.env['RPC_URL'] ?? '';
+if (!RPC_URL) {
+	throw new Error('RPC_URL must be set in .env');
+}
+const DRIFT_ENV = (process.env['DRIFT_ENV'] || 'mainnet-beta') as 'devnet' | 'mainnet-beta';
 const VAULTS_PROGRAM_ID = new PublicKey('vAuLTsyrvSfZRuRB3XgvkPwNGgYSs9YRYymVebLKoxR');
 
 // Use the default Solana keypair as manager (it has devnet SOL)
@@ -34,7 +37,7 @@ const MANAGER_KEYPAIR_PATH = path.resolve(process.env['HOME']!, '.config/solana/
 const DELEGATE_KEYPAIR_PATH = path.resolve(__dirname, '../keypairs/delegate.json');
 
 async function main() {
-	console.log('=== Initializing Delta-Neutral Vault on Devnet ===\n');
+	console.log(`=== Initializing Delta-Neutral Vault on ${DRIFT_ENV} ===\n`);
 
 	// Load keypairs
 	const managerKp = Keypair.fromSecretKey(
@@ -51,8 +54,8 @@ async function main() {
 	const managerBalance = await connection.getBalance(managerKp.publicKey);
 	console.log(`Manager balance: ${(managerBalance / 1e9).toFixed(4)} SOL\n`);
 
-	if (managerBalance < 0.1 * 1e9) {
-		throw new Error('Insufficient SOL in manager account. Need at least 0.1 SOL.');
+	if (managerBalance < 0.005 * 1e9) {
+		throw new Error('Insufficient SOL in manager account. Need at least 0.005 SOL.');
 	}
 
 	const wallet = new Wallet(managerKp);
@@ -83,61 +86,107 @@ async function main() {
 	);
 	const vaultClient = new VaultClient({ driftClient, program: vaultsProgram });
 
-	// Vault parameters
+	// Vault parameters — CONSERVATIVE for initial mainnet testing
 	const vaultName = 'delta-neutral-sol-v1';
 	const nameBytes = encodeName(vaultName);
 	const vaultAddress = getVaultAddressSync(VAULTS_PROGRAM_ID, nameBytes);
 
 	console.log(`Vault name: ${vaultName}`);
-	console.log(`Vault address: ${vaultAddress.toBase58()}`);
+	console.log(`Vault address (deterministic): ${vaultAddress.toBase58()}`);
+	console.log(`Environment: ${DRIFT_ENV}`);
 
 	// Check if vault already exists
 	try {
-		const existing = await vaultClient.getVault(vaultAddress);
+		await vaultClient.getVault(vaultAddress);
 		console.log('\nVault already exists!');
 		console.log(`Vault: ${vaultAddress.toBase58()}`);
-		await printEnvInstructions(vaultAddress.toBase58(), delegateKp.publicKey.toBase58());
+		console.log('\nkeeper/.env:');
+		console.log(`  VAULT_ADDRESS=${vaultAddress.toBase58()}`);
+		console.log('\nfrontend/.env.local:');
+		console.log(`  NEXT_PUBLIC_VAULT_ADDRESS=${vaultAddress.toBase58()}`);
 		await driftClient.unsubscribe();
 		return;
 	} catch {
 		console.log('Vault does not exist yet, creating...\n');
 	}
 
+	// MAINNET PARAMETERS — intentionally conservative:
+	// - Max $100 USDC deposit cap (for testing)
+	// - $1 minimum deposit
+	// - 1 hour redemption period (short for testing, increase later)
+	// - 0% fees (testing, no point charging ourselves)
+	const maxTokens = new BN(100_000_000);        // 100 USDC (6 decimals)
+	const minDeposit = new BN(1_000_000);          // 1 USDC
+	const redeemPeriod = new BN(3600);             // 1 hour
+
+	console.log('Vault parameters:');
+	console.log(`  Spot market: 0 (USDC)`);
+	console.log(`  Max tokens: $100 USDC`);
+	console.log(`  Min deposit: $1 USDC`);
+	console.log(`  Redeem period: 1 hour`);
+	console.log(`  Management fee: 0%`);
+	console.log(`  Profit share: 0%`);
+	console.log(`  Permissioned: false`);
+	console.log('');
+
 	console.log('Initializing vault...');
 	const txSig = await vaultClient.initializeVault({
 		name: nameBytes,
-		spotMarketIndex: 0,           // USDC
-		redeemPeriod: new BN(86400),  // 24 hour redemption window
-		maxTokens: new BN(10_000_000_000_000), // 10M USDC max
-		minDepositAmount: new BN(10_000_000), // $10 min deposit
-		managementFee: new BN(100),   // 1% annual management fee
-		profitShare: 1000,             // 10% profit share
+		spotMarketIndex: 0,            // USDC
+		redeemPeriod,
+		maxTokens,
+		minDepositAmount: minDeposit,
+		managementFee: new BN(0),      // 0% — testing
+		profitShare: 0,                 // 0% — testing
 		hurdleRate: 0,
 		permissioned: false,
 	});
 	console.log(`Vault initialized! Tx: ${txSig}`);
-	await connection.confirmTransaction(txSig, 'confirmed');
+	console.log(`  Explorer: https://solana.fm/tx/${txSig}`);
+	const latestBlockhash1 = await connection.getLatestBlockhash('confirmed');
+	await connection.confirmTransaction({ signature: txSig, ...latestBlockhash1 }, 'confirmed');
+	console.log('  Confirmed!\n');
+
+	// Append to setup log file
+	const logPath = path.resolve(__dirname, '../../logs/mainnet-setup.log');
+	const logLine = (msg: string) => {
+		const ts = new Date().toISOString();
+		const line = `${ts} ${msg}\n`;
+		try { fs.appendFileSync(logPath, line); } catch {}
+		console.log(msg);
+	};
+
+	logLine(`VAULT CREATED: ${vaultAddress.toBase58()}`);
+	logLine(`INIT TX: https://solana.fm/tx/${txSig}`);
 
 	// Set delegate
-	console.log(`\nSetting delegate to: ${delegateKp.publicKey.toBase58()}`);
+	logLine(`Setting delegate to: ${delegateKp.publicKey.toBase58()}`);
 	const delegateTx = await vaultClient.updateDelegate(vaultAddress, delegateKp.publicKey);
-	console.log(`Delegate set! Tx: ${delegateTx}`);
-	await connection.confirmTransaction(delegateTx, 'confirmed');
+	logLine(`DELEGATE TX: https://solana.fm/tx/${delegateTx}`);
+	const latestBlockhash2 = await connection.getLatestBlockhash('confirmed');
+	await connection.confirmTransaction({ signature: delegateTx, ...latestBlockhash2 }, 'confirmed');
+	logLine('Delegate confirmed!');
 
-	console.log('\n=== Vault initialized successfully! ===');
-	console.log(`Vault address: ${vaultAddress.toBase58()}`);
+	logLine('');
+	logLine('=== VAULT SETUP COMPLETE ===');
+	logLine(`  Vault:    ${vaultAddress.toBase58()}`);
+	logLine(`  Manager:  ${managerKp.publicKey.toBase58()}`);
+	logLine(`  Delegate: ${delegateKp.publicKey.toBase58()}`);
+	logLine(`  Network:  ${DRIFT_ENV}`);
+	logLine(`  Max deposit: $100 USDC`);
+	logLine(`  Min deposit: $1 USDC`);
 
-	await printEnvInstructions(vaultAddress.toBase58(), delegateKp.publicKey.toBase58());
+	console.log('\n=== UPDATE YOUR .env FILES ===');
+	console.log('');
+	console.log('keeper/.env:');
+	console.log(`  VAULT_ADDRESS=${vaultAddress.toBase58()}`);
+	console.log('');
+	console.log('frontend/.env.local:');
+	console.log(`  NEXT_PUBLIC_VAULT_ADDRESS=${vaultAddress.toBase58()}`);
+	console.log('');
+	console.log(`Delegate pubkey: ${delegateKp.publicKey.toBase58()}`);
+
 	await driftClient.unsubscribe();
-}
-
-async function printEnvInstructions(vaultAddress: string, delegatePubkey: string) {
-	console.log('\n=== Next Steps ===');
-	console.log('Add this to keeper/.env:');
-	console.log(`  VAULT_ADDRESS=${vaultAddress}`);
-	console.log('\nAdd this to frontend/.env.local:');
-	console.log(`  NEXT_PUBLIC_VAULT_ADDRESS=${vaultAddress}`);
-	console.log(`\nDelegate pubkey (for reference): ${delegatePubkey}`);
 }
 
 main().catch((err) => {
