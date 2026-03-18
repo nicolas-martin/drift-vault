@@ -304,7 +304,27 @@ export function useVault(): UseVaultReturn {
 			setError(null);
 
 			try {
-				const tx = await vaultClient.deposit(config.vaultAddress, amount);
+				const vaultDepositorAddress = getVaultDepositorAddressSync(
+					vaultClient.program.programId,
+					config.vaultAddress,
+					wallet.publicKey
+				);
+
+				// Check if VaultDepositor account exists — if not, initialize on first deposit
+				let needsInit = false;
+				try {
+					await vaultClient.getVaultDepositor(vaultDepositorAddress);
+				} catch {
+					needsInit = true;
+				}
+
+				const tx = await vaultClient.deposit(
+					vaultDepositorAddress,
+					amount,
+					needsInit
+						? { vault: config.vaultAddress, authority: wallet.publicKey }
+						: undefined
+				);
 				await refresh();
 				return tx;
 			} catch (err) {
@@ -329,7 +349,12 @@ export function useVault(): UseVaultReturn {
 			setError(null);
 
 			try {
-				const tx = await vaultClient.requestWithdraw(config.vaultAddress, shares, {
+				const vaultDepositorAddress = getVaultDepositorAddressSync(
+					vaultClient.program.programId,
+					config.vaultAddress,
+					wallet.publicKey
+				);
+				const tx = await vaultClient.requestWithdraw(vaultDepositorAddress, shares, {
 					subAccountId: 0,
 				});
 				await refresh();
@@ -355,7 +380,12 @@ export function useVault(): UseVaultReturn {
 		setError(null);
 
 		try {
-			const tx = await vaultClient.withdraw(config.vaultAddress);
+			const vaultDepositorAddress = getVaultDepositorAddressSync(
+				vaultClient.program.programId,
+				config.vaultAddress,
+				wallet.publicKey
+			);
+			const tx = await vaultClient.withdraw(vaultDepositorAddress);
 			await refresh();
 			return tx;
 		} catch (err) {
