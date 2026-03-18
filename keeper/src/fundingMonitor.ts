@@ -7,10 +7,10 @@ import { logger } from './logger';
 // =============================================================================
 
 export interface FundingSnapshot {
-  timestamp: number;
-  fundingRate: number;
-  fundingApr: number;
-  oraclePrice: number;
+	timestamp: number;
+	fundingRate: number;
+	fundingApr: number;
+	oraclePrice: number;
 }
 
 // =============================================================================
@@ -22,33 +22,33 @@ export interface FundingSnapshot {
  * @returns FundingSnapshot with current funding rate, APR, and oracle price
  */
 export function getFundingSnapshot(): FundingSnapshot {
-  try {
-    const fundingRate = getCurrentFundingRate();
-    
-    // Calculate APR: rate per hour * 24 hours * 365 days * 100 for percentage
-    const fundingApr = fundingRate * 24 * 365 * 100;
-    
-    const oraclePrice = getSolPrice();
+	try {
+		const fundingRate = getCurrentFundingRate();
 
-    const snapshot: FundingSnapshot = {
-      timestamp: Date.now(),
-      fundingRate,
-      fundingApr,
-      oraclePrice,
-    };
+		// Calculate APR: rate per hour * 24 hours * 365 days * 100 for percentage
+		const fundingApr = fundingRate * 24 * 365 * 100;
 
-    logger.debug('Funding snapshot captured', {
-      fundingRate: fundingRate.toFixed(6),
-      fundingApr: fundingApr.toFixed(2),
-      oraclePrice: oraclePrice.toFixed(2),
-    });
+		const oraclePrice = getSolPrice();
 
-    return snapshot;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error('Failed to get funding snapshot', { error: message });
-    throw error;
-  }
+		const snapshot: FundingSnapshot = {
+			timestamp: Date.now(),
+			fundingRate,
+			fundingApr,
+			oraclePrice,
+		};
+
+		logger.debug('Funding snapshot captured', {
+			fundingRate: fundingRate.toFixed(6),
+			fundingApr: fundingApr.toFixed(2),
+			oraclePrice: oraclePrice.toFixed(2),
+		});
+
+		return snapshot;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error('Failed to get funding snapshot', { error: message });
+		throw error;
+	}
 }
 
 // =============================================================================
@@ -61,16 +61,16 @@ export function getFundingSnapshot(): FundingSnapshot {
  * @returns true if funding rate exceeds minimum threshold
  */
 export function shouldOpenPosition(fundingRate: number): boolean {
-  const threshold = StrategyParams.MIN_FUNDING_RATE_THRESHOLD;
-  const shouldOpen = fundingRate > threshold;
+	const threshold = StrategyParams.MIN_FUNDING_RATE_THRESHOLD;
+	const shouldOpen = fundingRate > threshold;
 
-  logger.debug('Evaluating position open', {
-    fundingRate: fundingRate.toFixed(2),
-    threshold,
-    shouldOpen,
-  });
+	logger.debug('Evaluating position open', {
+		fundingRate: fundingRate.toFixed(2),
+		threshold,
+		shouldOpen,
+	});
 
-  return shouldOpen;
+	return shouldOpen;
 }
 
 /**
@@ -79,16 +79,16 @@ export function shouldOpenPosition(fundingRate: number): boolean {
  * @returns true if funding rate is below negative threshold
  */
 export function shouldClosePosition(fundingRate: number): boolean {
-  const threshold = StrategyParams.NEGATIVE_FUNDING_CLOSE_THRESHOLD;
-  const shouldClose = fundingRate < threshold;
+	const threshold = StrategyParams.NEGATIVE_FUNDING_CLOSE_THRESHOLD;
+	const shouldClose = fundingRate < threshold;
 
-  logger.debug('Evaluating position close', {
-    fundingRate: fundingRate.toFixed(2),
-    threshold,
-    shouldClose,
-  });
+	logger.debug('Evaluating position close', {
+		fundingRate: fundingRate.toFixed(2),
+		threshold,
+		shouldClose,
+	});
 
-  return shouldClose;
+	return shouldClose;
 }
 
 // =============================================================================
@@ -101,11 +101,11 @@ export function shouldClosePosition(fundingRate: number): boolean {
  * @returns Formatted string with rate, APR, and price
  */
 export function formatFundingInfo(snapshot: FundingSnapshot): string {
-  const ratePerHour = (snapshot.fundingRate * 100).toFixed(4);
-  const apr = snapshot.fundingApr.toFixed(2);
-  const price = snapshot.oraclePrice.toFixed(2);
+	const ratePerHour = (snapshot.fundingRate * 100).toFixed(4);
+	const apr = snapshot.fundingApr.toFixed(2);
+	const price = snapshot.oraclePrice.toFixed(2);
 
-  return `Funding: ${ratePerHour}%/hr | APR: ${apr}% | SOL Price: $${price}`;
+	return `Funding: ${ratePerHour}%/hr | APR: ${apr}% | SOL Price: $${price}`;
 }
 
 // =============================================================================
@@ -113,10 +113,10 @@ export function formatFundingInfo(snapshot: FundingSnapshot): string {
 // =============================================================================
 
 export const fundingMonitor = {
-  getFundingSnapshot,
-  shouldOpenPosition,
-  shouldClosePosition,
-  formatFundingInfo,
+	getFundingSnapshot,
+	shouldOpenPosition,
+	shouldClosePosition,
+	formatFundingInfo,
 };
 
 export default fundingMonitor;

@@ -57,6 +57,19 @@
   margin: 0;
 }
 
+.networkBanner {
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.4);
+  border-radius: 8px;
+  padding: 10px 16px;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto 8px;
+  color: #ffaa00;
+  font-size: 0.825rem;
+  text-align: center;
+}
+
 .errorBanner {
   background: var(--error-bg);
   border: 1px solid var(--error-border);

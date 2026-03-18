@@ -1,20 +1,20 @@
 import {
-  getDriftClient,
-  getJupiterClient,
-  getVaultUsdcBalance,
-  getVaultSolSpotPosition,
-  getVaultSolPerpPosition,
-  getCurrentFundingRate,
-  getSolPrice,
-  getAccountHealth,
-  BN,
-  PositionDirection,
-  OrderType,
-  MarketType,
-  getMarketOrderParams,
-  convertToNumber,
-  PRICE_PRECISION,
-  BASE_PRECISION,
+	getDriftClient,
+	getJupiterClient,
+	getVaultUsdcBalance,
+	getVaultSolSpotPosition,
+	getVaultSolPerpPosition,
+	getCurrentFundingRate,
+	getSolPrice,
+	getAccountHealth,
+	BN,
+	PositionDirection,
+	OrderType,
+	MarketType,
+	getMarketOrderParams,
+	convertToNumber,
+	PRICE_PRECISION,
+	BASE_PRECISION,
 } from './driftClient';
 import { config, MarketIndexes, StrategyParams, DEPLOY_FRACTION, MAX_SLIPPAGE_BPS } from './config';
 import { logger } from './logger';
@@ -41,85 +41,85 @@ const MIN_SOL_DUST = 0.001; // Minimum SOL to consider for swapping back
  * SOL price movements via the long spot position.
  */
 export async function openDeltaNeutralPosition(): Promise<void> {
-  logger.info('Opening delta-neutral position...');
+	logger.info('Opening delta-neutral position...');
 
-  try {
-    const driftClient = getDriftClient();
-    const jupiterClient = getJupiterClient();
+	try {
+		const driftClient = getDriftClient();
+		const jupiterClient = getJupiterClient();
 
-    // Get current USDC balance and SOL price
-    const usdcBalanceNum = getVaultUsdcBalance();
-    const solPriceNum = getSolPrice();
+		// Get current USDC balance and SOL price
+		const usdcBalanceNum = getVaultUsdcBalance();
+		const solPriceNum = getSolPrice();
 
-    logger.info(`USDC Balance: $${usdcBalanceNum.toFixed(2)}`);
-    logger.info(`SOL Price: $${solPriceNum.toFixed(2)}`);
+		logger.info(`USDC Balance: $${usdcBalanceNum.toFixed(2)}`);
+		logger.info(`SOL Price: $${solPriceNum.toFixed(2)}`);
 
-    // Calculate deployable USDC (apply safety fraction)
-    const deployableUsdc = usdcBalanceNum * DEPLOY_FRACTION;
+		// Calculate deployable USDC (apply safety fraction)
+		const deployableUsdc = usdcBalanceNum * DEPLOY_FRACTION;
 
-    // Split in half: one half for spot SOL purchase, one half for perp margin
-    let positionSizeUsd = deployableUsdc / 2;
+		// Split in half: one half for spot SOL purchase, one half for perp margin
+		let positionSizeUsd = deployableUsdc / 2;
 
-    // Cap at MAX_POSITION_SIZE_USD
-    if (positionSizeUsd > StrategyParams.MAX_POSITION_SIZE_USD) {
-      positionSizeUsd = StrategyParams.MAX_POSITION_SIZE_USD;
-      logger.info(`Position size capped at $${positionSizeUsd}`);
-    }
+		// Cap at MAX_POSITION_SIZE_USD
+		if (positionSizeUsd > StrategyParams.MAX_POSITION_SIZE_USD) {
+			positionSizeUsd = StrategyParams.MAX_POSITION_SIZE_USD;
+			logger.info(`Position size capped at $${positionSizeUsd}`);
+		}
 
-    // Check minimum position size
-    if (positionSizeUsd < MIN_POSITION_USD) {
-      logger.warn(`Position size $${positionSizeUsd.toFixed(2)} below minimum $${MIN_POSITION_USD}. Skipping.`);
-      return;
-    }
+		// Check minimum position size
+		if (positionSizeUsd < MIN_POSITION_USD) {
+			logger.warn(`Position size $${positionSizeUsd.toFixed(2)} below minimum $${MIN_POSITION_USD}. Skipping.`);
+			return;
+		}
 
-    // Calculate SOL amount to buy
-    const solAmount = positionSizeUsd / solPriceNum;
-    const usdcAmountIn = new BN(Math.floor(positionSizeUsd * 10 ** 6)); // USDC precision
-    const solAmountBase = new BN(Math.floor(solAmount * 10 ** 9)); // SOL precision for perps
+		// Calculate SOL amount to buy
+		const solAmount = positionSizeUsd / solPriceNum;
+		const usdcAmountIn = new BN(Math.floor(positionSizeUsd * 10 ** 6)); // USDC precision
+		const solAmountBase = new BN(Math.floor(solAmount * 10 ** 9)); // SOL precision for perps
 
-    logger.info(`Deploying $${positionSizeUsd.toFixed(2)} per side (${solAmount.toFixed(4)} SOL)`);
+		logger.info(`Deploying $${positionSizeUsd.toFixed(2)} per side (${solAmount.toFixed(4)} SOL)`);
 
-    // -------------------------------------------------------------------------
-    // STEP 1: Buy spot SOL via Jupiter swap through Drift
-    // -------------------------------------------------------------------------
-    logger.info('STEP 1: Buying spot SOL via swap...');
+		// -------------------------------------------------------------------------
+		// STEP 1: Buy spot SOL via Jupiter swap through Drift
+		// -------------------------------------------------------------------------
+		logger.info('STEP 1: Buying spot SOL via swap...');
 
-    const swapTx = await driftClient.swap({
-      inMarketIndex: MarketIndexes.USDC_SPOT,
-      outMarketIndex: MarketIndexes.SOL_SPOT,
-      amount: usdcAmountIn,
-      slippageBps: MAX_SLIPPAGE_BPS,
-    });
-    await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
-    logger.info(`Spot SOL purchase confirmed. Tx: ${swapTx}`);
+		const swapTx = await driftClient.swap({
+			inMarketIndex: MarketIndexes.USDC_SPOT,
+			outMarketIndex: MarketIndexes.SOL_SPOT,
+			amount: usdcAmountIn,
+			slippageBps: MAX_SLIPPAGE_BPS,
+		});
+		await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+		logger.info(`Spot SOL purchase confirmed. Tx: ${swapTx}`);
 
-    // -------------------------------------------------------------------------
-    // STEP 2: Open SHORT SOL-PERP position
-    // -------------------------------------------------------------------------
-    logger.info('STEP 2: Opening short SOL-PERP position...');
+		// -------------------------------------------------------------------------
+		// STEP 2: Open SHORT SOL-PERP position
+		// -------------------------------------------------------------------------
+		logger.info('STEP 2: Opening short SOL-PERP position...');
 
-    const perpOrderParams = getMarketOrderParams({
-      marketIndex: MarketIndexes.SOL_PERP,
-      direction: PositionDirection.SHORT,
-      baseAssetAmount: solAmountBase,
-      marketType: MarketType.PERP,
-    });
+		const perpOrderParams = getMarketOrderParams({
+			marketIndex: MarketIndexes.SOL_PERP,
+			direction: PositionDirection.SHORT,
+			baseAssetAmount: solAmountBase,
+			marketType: MarketType.PERP,
+		});
 
-    const perpTx = await driftClient.placePerpOrder(perpOrderParams);
-    await driftClient.connection.confirmTransaction(perpTx, 'confirmed');
-    logger.info(`Short SOL-PERP position confirmed. Tx: ${perpTx}`);
+		const perpTx = await driftClient.placePerpOrder(perpOrderParams);
+		await driftClient.connection.confirmTransaction(perpTx, 'confirmed');
+		logger.info(`Short SOL-PERP position confirmed. Tx: ${perpTx}`);
 
-    // Log final summary
-    const newHealth = getAccountHealth();
-    logger.info(
-      `Delta-neutral position opened successfully. ` +
-        `Spot: +${solAmount.toFixed(4)} SOL, Perp: -${solAmount.toFixed(4)} SOL. ` +
-        `Account health: ${newHealth}%`
-    );
-  } catch (error) {
-    logger.error('Failed to open delta-neutral position', { error });
-    throw error;
-  }
+		// Log final summary
+		const newHealth = getAccountHealth();
+		logger.info(
+			`Delta-neutral position opened successfully. ` +
+			`Spot: +${solAmount.toFixed(4)} SOL, Perp: -${solAmount.toFixed(4)} SOL. ` +
+			`Account health: ${newHealth}%`
+		);
+	} catch (error) {
+		logger.error('Failed to open delta-neutral position', { error });
+		throw error;
+	}
 }
 
 // =============================================================================
@@ -135,66 +135,66 @@ export async function openDeltaNeutralPosition(): Promise<void> {
  * - Manual wind-down requested
  */
 export async function closeAllPositions(): Promise<void> {
-  logger.info('Closing all positions...');
+	logger.info('Closing all positions...');
 
-  try {
-    const driftClient = getDriftClient();
+	try {
+		const driftClient = getDriftClient();
 
-    // Get current positions (in SOL units already)
-    const perpSizeNum = getVaultSolPerpPosition(); // negative = short
-    const spotSizeNum = getVaultSolSpotPosition();
+		// Get current positions (in SOL units already)
+		const perpSizeNum = getVaultSolPerpPosition(); // negative = short
+		const spotSizeNum = getVaultSolSpotPosition();
 
-    logger.info(`Current positions - Spot: ${spotSizeNum.toFixed(4)} SOL, Perp: ${perpSizeNum.toFixed(4)} SOL`);
+		logger.info(`Current positions - Spot: ${spotSizeNum.toFixed(4)} SOL, Perp: ${perpSizeNum.toFixed(4)} SOL`);
 
-    // -------------------------------------------------------------------------
-    // STEP 1: Sell spot SOL first — reduces directional risk immediately
-    // -------------------------------------------------------------------------
-    if (spotSizeNum > MIN_SOL_DUST) {
-      logger.info('STEP 1: Swapping SOL back to USDC...');
+		// -------------------------------------------------------------------------
+		// STEP 1: Sell spot SOL first — reduces directional risk immediately
+		// -------------------------------------------------------------------------
+		if (spotSizeNum > MIN_SOL_DUST) {
+			logger.info('STEP 1: Swapping SOL back to USDC...');
 
-      const solAmountIn = new BN(Math.floor(spotSizeNum * 10 ** 9));
-      const swapTx = await driftClient.swap({
-        inMarketIndex: MarketIndexes.SOL_SPOT,
-        outMarketIndex: MarketIndexes.USDC_SPOT,
-        amount: solAmountIn,
-        slippageBps: MAX_SLIPPAGE_BPS,
-      });
-      await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
-      logger.info(`SOL swapped to USDC and confirmed. Tx: ${swapTx}`);
-    } else {
-      logger.info('No significant SOL balance to swap.');
-    }
+			const solAmountIn = new BN(Math.floor(spotSizeNum * 10 ** 9));
+			const swapTx = await driftClient.swap({
+				inMarketIndex: MarketIndexes.SOL_SPOT,
+				outMarketIndex: MarketIndexes.USDC_SPOT,
+				amount: solAmountIn,
+				slippageBps: MAX_SLIPPAGE_BPS,
+			});
+			await driftClient.connection.confirmTransaction(swapTx, 'confirmed');
+			logger.info(`SOL swapped to USDC and confirmed. Tx: ${swapTx}`);
+		} else {
+			logger.info('No significant SOL balance to swap.');
+		}
 
-    // -------------------------------------------------------------------------
-    // STEP 2: Close short perp position
-    // -------------------------------------------------------------------------
-    if (Math.abs(perpSizeNum) > MIN_SOL_DUST) {
-      logger.info('STEP 2: Closing short perp position...');
+		// -------------------------------------------------------------------------
+		// STEP 2: Close short perp position
+		// -------------------------------------------------------------------------
+		if (Math.abs(perpSizeNum) > MIN_SOL_DUST) {
+			logger.info('STEP 2: Closing short perp position...');
 
-      // To close a short, we go LONG with reduceOnly
-      const perpAmountBn = new BN(Math.floor(Math.abs(perpSizeNum) * 10 ** 9));
-      const closeOrderParams = getMarketOrderParams({
-        marketIndex: MarketIndexes.SOL_PERP,
-        direction: PositionDirection.LONG,
-        baseAssetAmount: perpAmountBn,
-        marketType: MarketType.PERP,
-        reduceOnly: true,
-      });
+			// To close a short, we go LONG with reduceOnly
+			const perpAmountBn = new BN(Math.floor(Math.abs(perpSizeNum) * 10 ** 9));
+			const closeOrderParams = getMarketOrderParams({
+				marketIndex: MarketIndexes.SOL_PERP,
+				direction: PositionDirection.LONG,
+				baseAssetAmount: perpAmountBn,
+				marketType: MarketType.PERP,
+				reduceOnly: true,
+			});
 
-      const closePerpTx = await driftClient.placePerpOrder(closeOrderParams);
-      await driftClient.connection.confirmTransaction(closePerpTx, 'confirmed');
-      logger.info(`Perp position closed and confirmed. Tx: ${closePerpTx}`);
-    } else {
-      logger.info('No perp position to close.');
-    }
+			const closePerpTx = await driftClient.placePerpOrder(closeOrderParams);
+			await driftClient.connection.confirmTransaction(closePerpTx, 'confirmed');
+			logger.info(`Perp position closed and confirmed. Tx: ${closePerpTx}`);
+		} else {
+			logger.info('No perp position to close.');
+		}
 
-    // Log final state
-    const finalUsdcNum = getVaultUsdcBalance();
-    logger.info(`All positions closed. Final USDC balance: $${finalUsdcNum.toFixed(2)}`);
-  } catch (error) {
-    logger.error('Failed to close all positions', { error });
-    throw error;
-  }
+		// Log final state
+		const finalUsdcNum = getVaultUsdcBalance();
+		logger.info(`All positions closed. Final USDC balance: $${finalUsdcNum.toFixed(2)}`);
+	} catch (error) {
+		logger.error('Failed to close all positions', { error });
+		throw error;
+	}
 }
 
 // =============================================================================
@@ -212,93 +212,93 @@ export async function closeAllPositions(): Promise<void> {
  * If imbalance > REBALANCE_THRESHOLD_PCT, adjust the smaller side.
  */
 export async function rebalanceIfNeeded(): Promise<void> {
-  logger.debug('Checking if rebalance is needed...');
+	logger.debug('Checking if rebalance is needed...');
 
-  try {
-    const driftClient = getDriftClient();
+	try {
+		const driftClient = getDriftClient();
 
-    // Get current positions (already in SOL units)
-    const spotSizeNum = getVaultSolSpotPosition();
-    const perpSizeNum = Math.abs(getVaultSolPerpPosition()); // abs value of short
+		// Get current positions (already in SOL units)
+		const spotSizeNum = getVaultSolSpotPosition();
+		const perpSizeNum = Math.abs(getVaultSolPerpPosition()); // abs value of short
 
-    // If no positions, nothing to rebalance
-    if (spotSizeNum <= 0 && perpSizeNum <= 0) {
-      logger.debug('No positions to rebalance.');
-      return;
-    }
+		// If no positions, nothing to rebalance
+		if (spotSizeNum <= 0 && perpSizeNum <= 0) {
+			logger.debug('No positions to rebalance.');
+			return;
+		}
 
-    // Calculate imbalance percentage
-    const avgSize = (spotSizeNum + perpSizeNum) / 2;
-    if (avgSize === 0) {
-      logger.debug('Average position size is zero. Skipping rebalance check.');
-      return;
-    }
+		// Calculate imbalance percentage
+		const avgSize = (spotSizeNum + perpSizeNum) / 2;
+		if (avgSize === 0) {
+			logger.debug('Average position size is zero. Skipping rebalance check.');
+			return;
+		}
 
-    const imbalance = Math.abs(spotSizeNum - perpSizeNum);
-    const imbalancePct = (imbalance / avgSize) * 100;
+		const imbalance = Math.abs(spotSizeNum - perpSizeNum);
+		const imbalancePct = (imbalance / avgSize) * 100;
 
-    logger.debug(
-      `Spot: ${spotSizeNum.toFixed(4)} SOL, Perp: ${perpSizeNum.toFixed(4)} SOL, ` +
-        `Imbalance: ${imbalancePct.toFixed(2)}%`
-    );
+		logger.debug(
+			`Spot: ${spotSizeNum.toFixed(4)} SOL, Perp: ${perpSizeNum.toFixed(4)} SOL, ` +
+			`Imbalance: ${imbalancePct.toFixed(2)}%`
+		);
 
-    // Check if within tolerance
-    if (imbalancePct <= StrategyParams.REBALANCE_THRESHOLD_PCT) {
-      logger.debug('Positions within tolerance. No rebalance needed.');
-      return;
-    }
+		// Check if within tolerance
+		if (imbalancePct <= StrategyParams.REBALANCE_THRESHOLD_PCT) {
+			logger.debug('Positions within tolerance. No rebalance needed.');
+			return;
+		}
 
-    logger.info(
-      `Rebalance triggered. Imbalance: ${imbalancePct.toFixed(2)}% > ${StrategyParams.REBALANCE_THRESHOLD_PCT}%`
-    );
+		logger.info(
+			`Rebalance triggered. Imbalance: ${imbalancePct.toFixed(2)}% > ${StrategyParams.REBALANCE_THRESHOLD_PCT}%`
+		);
 
-    // Determine which side needs adjustment
-    if (spotSizeNum > perpSizeNum) {
-      // Spot is larger - increase short perp by the deficit
-      const deficit = spotSizeNum - perpSizeNum;
-      const deficitBn = new BN(Math.floor(deficit * 10 ** 9));
+		// Determine which side needs adjustment
+		if (spotSizeNum > perpSizeNum) {
+			// Spot is larger - increase short perp by the deficit
+			const deficit = spotSizeNum - perpSizeNum;
+			const deficitBn = new BN(Math.floor(deficit * 10 ** 9));
 
-      logger.info(`Increasing short perp by ${deficit.toFixed(4)} SOL to match spot...`);
+			logger.info(`Increasing short perp by ${deficit.toFixed(4)} SOL to match spot...`);
 
-      const rebalanceOrderParams = getMarketOrderParams({
-        marketIndex: MarketIndexes.SOL_PERP,
-        direction: PositionDirection.SHORT,
-        baseAssetAmount: deficitBn,
-        marketType: MarketType.PERP,
-      });
+			const rebalanceOrderParams = getMarketOrderParams({
+				marketIndex: MarketIndexes.SOL_PERP,
+				direction: PositionDirection.SHORT,
+				baseAssetAmount: deficitBn,
+				marketType: MarketType.PERP,
+			});
 
-      const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-      await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
-      logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
-    } else {
-      // Perp is larger - reduce short perp by the surplus
-      const surplus = perpSizeNum - spotSizeNum;
-      const surplusBn = new BN(Math.floor(surplus * 10 ** 9));
+			const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
+			await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+			logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
+		} else {
+			// Perp is larger - reduce short perp by the surplus
+			const surplus = perpSizeNum - spotSizeNum;
+			const surplusBn = new BN(Math.floor(surplus * 10 ** 9));
 
-      logger.info(`Reducing short perp by ${surplus.toFixed(4)} SOL to match spot...`);
+			logger.info(`Reducing short perp by ${surplus.toFixed(4)} SOL to match spot...`);
 
-      const rebalanceOrderParams = getMarketOrderParams({
-        marketIndex: MarketIndexes.SOL_PERP,
-        direction: PositionDirection.LONG,
-        baseAssetAmount: surplusBn,
-        marketType: MarketType.PERP,
-        reduceOnly: true,
-      });
+			const rebalanceOrderParams = getMarketOrderParams({
+				marketIndex: MarketIndexes.SOL_PERP,
+				direction: PositionDirection.LONG,
+				baseAssetAmount: surplusBn,
+				marketType: MarketType.PERP,
+				reduceOnly: true,
+			});
 
-      const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
-      await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
-      logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
-    }
+			const rebalanceTx = await driftClient.placePerpOrder(rebalanceOrderParams);
+			await driftClient.connection.confirmTransaction(rebalanceTx, 'confirmed');
+			logger.info(`Rebalance confirmed. Tx: ${rebalanceTx}`);
+		}
 
-    // Log final state
-    const newSpotNum = getVaultSolSpotPosition();
-    const newPerpNum = Math.abs(getVaultSolPerpPosition());
+		// Log final state
+		const newSpotNum = getVaultSolSpotPosition();
+		const newPerpNum = Math.abs(getVaultSolPerpPosition());
 
-    logger.info(`Post-rebalance positions - Spot: ${newSpotNum.toFixed(4)} SOL, Perp: ${newPerpNum.toFixed(4)} SOL`);
-  } catch (error) {
-    logger.error('Failed to rebalance positions', { error });
-    throw error;
-  }
+		logger.info(`Post-rebalance positions - Spot: ${newSpotNum.toFixed(4)} SOL, Perp: ${newPerpNum.toFixed(4)} SOL`);
+	} catch (error) {
+		logger.error('Failed to rebalance positions', { error });
+		throw error;
+	}
 }
 
 // =============================================================================
@@ -312,32 +312,32 @@ export async function rebalanceIfNeeded(): Promise<void> {
  * This function settles them to convert unrealized PnL to realized PnL.
  */
 export async function settleFunding(): Promise<void> {
-  logger.debug('Settling funding payments...');
+	logger.debug('Settling funding payments...');
 
-  try {
-    const driftClient = getDriftClient();
-    const user = driftClient.getUser();
-    const userAccountPublicKey = await driftClient.getUserAccountPublicKey();
-    const userAccount = user.getUserAccount();
+	try {
+		const driftClient = getDriftClient();
+		const user = driftClient.getUser();
+		const userAccountPublicKey = await driftClient.getUserAccountPublicKey();
+		const userAccount = user.getUserAccount();
 
-    // Settle PnL for SOL-PERP market
-    await driftClient.settlePNL(
-      userAccountPublicKey,
-      userAccount,
-      MarketIndexes.SOL_PERP
-    );
+		// Settle PnL for SOL-PERP market
+		await driftClient.settlePNL(
+			userAccountPublicKey,
+			userAccount,
+			MarketIndexes.SOL_PERP
+		);
 
-    logger.info('Funding payments settled successfully.');
-  } catch (error: unknown) {
-    // Ignore "Nothing to settle" errors - this is expected when there's no accumulated funding
-    const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.info('Funding payments settled successfully.');
+	} catch (error: unknown) {
+		// Ignore "Nothing to settle" errors - this is expected when there's no accumulated funding
+		const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (errorMessage.includes('Nothing to settle') || errorMessage.includes('NothingToSettle')) {
-      logger.debug('No funding to settle at this time.');
-      return;
-    }
+		if (errorMessage.includes('Nothing to settle') || errorMessage.includes('NothingToSettle')) {
+			logger.debug('No funding to settle at this time.');
+			return;
+		}
 
-    // Log other errors but don't throw - settling is non-critical
-    logger.error('Failed to settle funding', { error });
-  }
+		// Log other errors but don't throw - settling is non-critical
+		logger.error('Failed to settle funding', { error });
+	}
 }

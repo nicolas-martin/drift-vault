@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
-    "lib": ["ES2020"],
+    "lib": [
+      "ES2020"
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -21,9 +23,16 @@
     "noImplicitOverride": true,
     "baseUrl": ".",
     "paths": {
-      "@solana/web3.js": ["./node_modules/@drift-labs/sdk/node_modules/@solana/web3.js"]
+      "@solana/web3.js": [
+        "./node_modules/@drift-labs/sdk/node_modules/@solana/web3.js"
+      ]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

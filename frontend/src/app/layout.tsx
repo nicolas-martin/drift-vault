@@ -3,20 +3,20 @@ import { WalletProvider } from '@/contexts/WalletProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Delta-Neutral Vault',
-  description: 'Earn yield from funding rate arbitrage on Drift Protocol',
+	title: 'Delta-Neutral Vault',
+	description: 'Earn yield from funding rate arbitrage on Drift Protocol',
 };
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  return (
-    <html lang="en">
-      <body>
-        <WalletProvider>{children}</WalletProvider>
-      </body>
-    </html>
-  );
+	return (
+		<html lang="en">
+			<body>
+				<WalletProvider>{children}</WalletProvider>
+			</body>
+		</html>
+	);
 }
