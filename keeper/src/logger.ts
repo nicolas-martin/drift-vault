@@ -20,8 +20,11 @@ function getLogLevel(): LogLevel {
 // Custom Formats
 // =============================================================================
 
+// const timestampFormat = winston.format.timestamp({
+// 	format: 'YYYY-MM-DD HH:mm:ss.SSS',
+// });
 const timestampFormat = winston.format.timestamp({
-	format: 'YYYY-MM-DD HH:mm:ss.SSS',
+	format: 'HH:mm:ss',
 });
 
 const consoleFormat = winston.format.combine(

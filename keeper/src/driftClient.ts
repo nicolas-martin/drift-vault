@@ -15,7 +15,7 @@ import {
 	OrderType,
 	MarketType,
 	getMarketOrderParams,
-	JupiterClient,
+	UnifiedSwapClient,
 	PerpMarkets,
 	SpotMarkets,
 } from '@drift-labs/sdk';
@@ -52,12 +52,12 @@ export {
 	OrderType,
 	MarketType,
 	getMarketOrderParams,
-	JupiterClient,
+	UnifiedSwapClient,
 };
 
 // Module-level client instances
 let driftClient: DriftClient | null = null;
-let jupiterClient: JupiterClient | null = null;
+let swapClient: UnifiedSwapClient | null = null;
 let vaultUser: User | null = null;
 
 // Market indices
@@ -70,12 +70,12 @@ const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 
 /**
- * Initialize the Drift client and Jupiter client
- * @returns Object containing driftClient and jupiterClient instances
+ * Initialize the Drift client and swap client
+ * @returns Object containing driftClient and swapClient instances
  */
 export async function initializeDriftClient(): Promise<{
 	driftClient: DriftClient;
-	jupiterClient: JupiterClient;
+	swapClient: UnifiedSwapClient;
 }> {
 	// Create connection with confirmed commitment and WSS endpoint
 	const connection = new Connection(CONFIG.RPC_URL, {
@@ -127,12 +127,13 @@ export async function initializeDriftClient(): Promise<{
 	// Subscribe to account updates
 	await driftClient.subscribe();
 
-	// Initialize Jupiter client
-	jupiterClient = new JupiterClient({
+	// Initialize unified swap client (Jupiter-backed)
+	swapClient = new UnifiedSwapClient({
+		clientType: 'jupiter',
 		connection,
 	});
 
-	return { driftClient, jupiterClient };
+	return { driftClient, swapClient };
 }
 
 /**
@@ -340,13 +341,13 @@ export function getDriftClient(): DriftClient {
 }
 
 /**
- * Get the JupiterClient instance
- * @returns JupiterClient instance
+ * Get the UnifiedSwapClient instance
+ * @returns UnifiedSwapClient instance
  * @throws Error if not initialized
  */
-export function getJupiterClient(): JupiterClient {
-	if (!jupiterClient) {
-		throw new Error('JupiterClient not initialized. Call initializeDriftClient first.');
+export function getSwapClient(): UnifiedSwapClient {
+	if (!swapClient) {
+		throw new Error('SwapClient not initialized. Call initializeDriftClient first.');
 	}
-	return jupiterClient;
+	return swapClient;
 }

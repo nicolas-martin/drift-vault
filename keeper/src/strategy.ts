@@ -1,6 +1,6 @@
 import {
 	getDriftClient,
-	getJupiterClient,
+	getSwapClient,
 	getVaultUsdcBalance,
 	getVaultSolSpotPosition,
 	getVaultSolPerpPosition,
@@ -45,7 +45,7 @@ export async function openDeltaNeutralPosition(): Promise<void> {
 
 	try {
 		const driftClient = getDriftClient();
-		const jupiterClient = getJupiterClient();
+		const swapClient = getSwapClient();
 
 		// Get current USDC balance and SOL price
 		const usdcBalanceNum = getVaultUsdcBalance();
@@ -85,6 +85,7 @@ export async function openDeltaNeutralPosition(): Promise<void> {
 		logger.info('STEP 1: Buying spot SOL via swap...');
 
 		const swapTx = await driftClient.swap({
+			swapClient,
 			inMarketIndex: MarketIndexes.USDC_SPOT,
 			outMarketIndex: MarketIndexes.SOL_SPOT,
 			amount: usdcAmountIn,
@@ -139,6 +140,7 @@ export async function closeAllPositions(): Promise<void> {
 
 	try {
 		const driftClient = getDriftClient();
+		const swapClient = getSwapClient();
 
 		// Get current positions (in SOL units already)
 		const perpSizeNum = getVaultSolPerpPosition(); // negative = short
@@ -154,6 +156,7 @@ export async function closeAllPositions(): Promise<void> {
 
 			const solAmountIn = new BN(Math.floor(spotSizeNum * 10 ** 9));
 			const swapTx = await driftClient.swap({
+				swapClient,
 				inMarketIndex: MarketIndexes.SOL_SPOT,
 				outMarketIndex: MarketIndexes.USDC_SPOT,
 				amount: solAmountIn,
