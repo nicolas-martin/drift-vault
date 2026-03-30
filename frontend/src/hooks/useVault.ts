@@ -7,7 +7,6 @@ import BN from 'bn.js';
 import {
 	DriftClient,
 	IWallet,
-	BulkAccountLoader,
 	QUOTE_PRECISION,
 	initialize,
 	getMarketsAndOraclesForSubscription,
@@ -94,7 +93,15 @@ export function useVault(): UseVaultReturn {
 					signAllTransactions: wallet.signAllTransactions,
 				};
 
-				const accountLoader = new BulkAccountLoader(connection, 'confirmed', 1000);
+				// @ts-ignore — accessing private rpcEndpoint for debugging
+				const connEndpoint = (connection as any)?.rpcEndpoint || (connection as any)?._rpcEndpoint || 'unknown';
+				console.log('[useVault] Initializing DriftClient...', {
+					env: config.driftEnv,
+					configRpcUrl: config.rpcUrl.substring(0, 60),
+					connectionEndpoint: typeof connEndpoint === 'string' ? connEndpoint.substring(0, 60) : connEndpoint,
+					wallet: wallet.publicKey.toBase58(),
+				});
+
 				const sdkConfig = initialize({ env: config.driftEnv });
 				const { perpMarketIndexes, spotMarketIndexes, oracleInfos } =
 					getMarketsAndOraclesForSubscription(config.driftEnv);
@@ -107,13 +114,12 @@ export function useVault(): UseVaultReturn {
 					perpMarketIndexes,
 					spotMarketIndexes,
 					oracleInfos,
-					accountSubscription: {
-						type: 'polling',
-						accountLoader,
-					},
+					accountSubscription: { type: 'websocket' },
 				});
 
+				console.log('[useVault] Subscribing to Drift...');
 				await drift.subscribe();
+				console.log('[useVault] Drift subscribed successfully');
 				driftClientRef.current = drift;
 				setDriftClient(drift);
 
@@ -129,10 +135,11 @@ export function useVault(): UseVaultReturn {
 					program: vaultsProgram,
 				});
 
+				console.log('[useVault] VaultClient initialized');
 				setVaultClient(vault);
 				setIsInitialized(true);
 			} catch (err) {
-				console.error('Failed to initialize clients:', err);
+				console.error('[useVault] INIT FAILED:', err);
 				setError(err instanceof Error ? err.message : 'Failed to initialize');
 			} finally {
 				setIsLoading(false);

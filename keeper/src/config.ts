@@ -88,6 +88,18 @@ export const StrategyParams = {
 	MAX_POSITION_SIZE_USD: getEnvVarAsNumber('MAX_POSITION_SIZE_USD', 100_000),
 
 	/**
+	 * Minimum USDC balance required in vault before deploying capital.
+	 * Strategy splits capital in half, so this should be >= 2x the minimum per-side position.
+	 */
+	MIN_USDC_TO_DEPLOY: getEnvVarAsNumber('MIN_USDC_TO_DEPLOY', 2),
+
+	/**
+	 * Minimum position size per side in USD.
+	 * Won't open a position if each leg (spot or perp) would be smaller than this.
+	 */
+	MIN_POSITION_SIZE_USD: getEnvVarAsNumber('MIN_POSITION_SIZE_USD', 1),
+
+	/**
 	 * Rebalance threshold percentage.
 	 * Trigger rebalance when spot/perp ratio drifts by more than this %.
 	 */
@@ -118,7 +130,7 @@ export const DEPLOY_FRACTION = 0.9;
 /**
  * Maximum allowed slippage in basis points (1 bps = 0.01%).
  */
-export const MAX_SLIPPAGE_BPS = 50;
+export const MAX_SLIPPAGE_BPS = 100; // 1% — small swaps need more slippage tolerance
 
 // =============================================================================
 // Validation

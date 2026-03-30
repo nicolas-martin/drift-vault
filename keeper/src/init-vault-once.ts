@@ -9,7 +9,6 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import {
 	DriftClient,
 	Wallet,
-	BulkAccountLoader,
 	initialize,
 	getMarketsAndOraclesForSubscription,
 	BN,
@@ -32,8 +31,8 @@ if (!RPC_URL) {
 const DRIFT_ENV = (process.env['DRIFT_ENV'] || 'mainnet-beta') as 'devnet' | 'mainnet-beta';
 const VAULTS_PROGRAM_ID = new PublicKey('vAuLTsyrvSfZRuRB3XgvkPwNGgYSs9YRYymVebLKoxR');
 
-// Use the default Solana keypair as manager (it has devnet SOL)
-const MANAGER_KEYPAIR_PATH = path.resolve(process.env['HOME']!, '.config/solana/id.json');
+// Manager keypair — the vault authority
+const MANAGER_KEYPAIR_PATH = path.resolve(__dirname, '../keypairs/manager.json');
 const DELEGATE_KEYPAIR_PATH = path.resolve(__dirname, '../keypairs/delegate.json');
 
 async function main() {
@@ -60,7 +59,6 @@ async function main() {
 
 	const wallet = new Wallet(managerKp);
 	const sdkConfig = initialize({ env: DRIFT_ENV });
-	const bulkAccountLoader = new BulkAccountLoader(connection, 'confirmed', 1000);
 	const { perpMarketIndexes, spotMarketIndexes, oracleInfos } =
 		getMarketsAndOraclesForSubscription(DRIFT_ENV);
 
@@ -72,7 +70,7 @@ async function main() {
 		perpMarketIndexes,
 		spotMarketIndexes,
 		oracleInfos,
-		accountSubscription: { type: 'polling', accountLoader: bulkAccountLoader },
+		accountSubscription: { type: 'websocket' },
 	});
 
 	console.log('Subscribing to Drift...');

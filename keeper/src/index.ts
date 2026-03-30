@@ -28,7 +28,7 @@ import { getDriftClient } from './driftClient';
 // Constants
 // =============================================================================
 
-const MIN_USDC_TO_DEPLOY = 100;
+const { MIN_USDC_TO_DEPLOY } = StrategyParams;
 
 // =============================================================================
 // Startup Banner

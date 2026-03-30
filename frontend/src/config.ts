@@ -41,11 +41,36 @@ function parseDriftEnv(value: string): DriftEnv {
 }
 
 export function getConfig(): Config {
+	// IMPORTANT: Next.js only inlines process.env.NEXT_PUBLIC_* when accessed
+	// directly — NOT through a helper like process.env[key]. So we must
+	// reference them explicitly here.
+	const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+	const driftEnvRaw = process.env.NEXT_PUBLIC_DRIFT_ENV;
+
+	if (!rpcUrl) {
+		throw new Error('Missing environment variable: NEXT_PUBLIC_RPC_URL');
+	}
+	if (!driftEnvRaw) {
+		throw new Error('Missing environment variable: NEXT_PUBLIC_DRIFT_ENV');
+	}
+
+	const vaultAddress = parsePublicKey(process.env.NEXT_PUBLIC_VAULT_ADDRESS);
+	const driftEnv = parseDriftEnv(driftEnvRaw);
+
+	// Debug: log resolved config (visible in browser console)
+	if (typeof window !== 'undefined') {
+		console.log('[config] Resolved config:', {
+			rpcUrl: rpcUrl.substring(0, 60),
+			vaultAddress: vaultAddress?.toBase58() ?? 'null',
+			driftEnv,
+		});
+	}
+
 	return {
-		rpcUrl: getEnvVar('NEXT_PUBLIC_RPC_URL', 'https://api.mainnet-beta.solana.com'),
-		vaultAddress: parsePublicKey(process.env.NEXT_PUBLIC_VAULT_ADDRESS),
+		rpcUrl,
+		vaultAddress,
 		vaultsProgramId: DRIFT_VAULTS_PROGRAM_ID,
-		driftEnv: parseDriftEnv(getEnvVar('NEXT_PUBLIC_DRIFT_ENV', 'mainnet-beta')),
+		driftEnv,
 	};
 }
 

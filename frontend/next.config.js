@@ -1,5 +1,9 @@
 const webpack = require('webpack');
 const path = require('path');
+const { loadEnvConfig } = require('@next/env');
+
+// Force-load .env.local before Next.js config runs
+loadEnvConfig(process.cwd());
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

@@ -2,7 +2,6 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import {
 	DriftClient,
 	Wallet,
-	BulkAccountLoader,
 	initialize,
 	User,
 	getMarketsAndOraclesForSubscription,
@@ -41,7 +40,6 @@ const CONFIG = {
 export {
 	DriftClient,
 	Wallet,
-	BulkAccountLoader,
 	User,
 	BN,
 	PRICE_PRECISION,
@@ -93,13 +91,6 @@ export async function initializeDriftClient(): Promise<{
 	// Initialize SDK config for the environment
 	const sdkConfig = initialize({ env: CONFIG.DRIFT_ENV });
 
-	// Create bulk account loader with 1000ms polling interval
-	const bulkAccountLoader = new BulkAccountLoader(
-		connection,
-		'confirmed',
-		1000
-	);
-
 	// Get markets and oracles for subscription
 	const { perpMarketIndexes, spotMarketIndexes, oracleInfos } =
 		getMarketsAndOraclesForSubscription(CONFIG.DRIFT_ENV);
@@ -107,15 +98,12 @@ export async function initializeDriftClient(): Promise<{
 	// Create vault authority public key
 	const vaultAuthority = new PublicKey(CONFIG.VAULT_ADDRESS);
 
-	// Create DriftClient instance
+	// Create DriftClient instance (websocket subscription — no batch RPC needed)
 	driftClient = new DriftClient({
 		connection,
 		wallet,
 		programID: new PublicKey(sdkConfig.DRIFT_PROGRAM_ID),
-		accountSubscription: {
-			type: 'polling',
-			accountLoader: bulkAccountLoader,
-		},
+		accountSubscription: { type: 'websocket' },
 		perpMarketIndexes,
 		spotMarketIndexes,
 		oracleInfos,

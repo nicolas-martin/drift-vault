@@ -36,7 +36,7 @@ async function confirmTx(connection: Connection, signature: TransactionSignature
 
 const USDC_PRECISION = new BN(10).pow(new BN(6)); // USDC has 6 decimals
 const SOL_PRECISION = new BN(10).pow(new BN(9)); // SOL has 9 decimals
-const MIN_POSITION_USD = 0.50; // Minimum position size in USD
+const { MIN_POSITION_SIZE_USD } = StrategyParams;
 const MIN_SOL_DUST = 0.001; // Minimum SOL to consider for swapping back
 
 // =============================================================================
@@ -78,8 +78,8 @@ export async function openDeltaNeutralPosition(): Promise<void> {
 		}
 
 		// Check minimum position size
-		if (positionSizeUsd < MIN_POSITION_USD) {
-			logger.warn(`Position size $${positionSizeUsd.toFixed(2)} below minimum $${MIN_POSITION_USD}. Skipping.`);
+		if (positionSizeUsd < MIN_POSITION_SIZE_USD) {
+			logger.warn(`Position size $${positionSizeUsd.toFixed(2)} below minimum $${MIN_POSITION_SIZE_USD}. Skipping.`);
 			return;
 		}
 
